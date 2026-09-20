@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ['20', '22', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm ci
+      - run: npm test
+
+  verify-plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: npm ci
+
+      - name: Generate a plugin from the CLI
+        run: node bin/theme-forge.js --name CI --id com.example.ci-theme
+             "#1B1D23" "#D4D7DE" "#4C8DF6" "#E5A33C" "#5CC98A"
+
+      - name: Contrast audit must pass for every variant
+        run: node bin/theme-forge.js --audit
+             "#1B1D23" "#D4D7DE" "#4C8DF6" "#E5A33C" "#5CC98A"
+
+      - name: The zip must survive a real unzip and hold a real jar
+        run: |
+          unzip -t ci.zip
+          mkdir -p _check && unzip -q ci.zip -d _check
+          unzip -t _check/ci/lib/ci.jar
+          unzip -p _check/ci/lib/ci.jar META-INF/plugin.xml | head -5
+          python3 -c "import sys,xml.dom.minidom as m;m.parse('/dev/stdin')" \
+            < <(unzip -p _check/ci/lib/ci.jar META-INF/plugin.xml)
+        shell: bash
+
+      - name: The bundle must build
+        run: npm run build

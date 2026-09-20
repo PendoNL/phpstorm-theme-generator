@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.zip
+*.jar
+.DS_Store
+npm-debug.log*
+
+# JetBrains project files — this repo generates themes for these IDEs,
+# it should not carry one developer's IDE settings.
+.idea/
+*.iml

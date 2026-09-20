@@ -1,0 +1,31 @@
+{
+  "name": "phpstorm-theme-generator",
+  "version": "0.1.0",
+  "description": "Derive a complete PhpStorm / IntelliJ theme family from five colours — editor scheme, IDE chrome, console ANSI, icons — and emit an installable plugin.",
+  "type": "module",
+  "license": "SEE LICENSE IN LICENSE",
+  "keywords": [
+    "phpstorm", "intellij", "jetbrains", "theme", "colour-scheme",
+    "color-scheme", "oklch", "generator", "idea-plugin"
+  ],
+  "main": "src/lib/index.js",
+  "exports": {
+    ".": "./src/lib/index.js",
+    "./color": "./src/lib/color.js",
+    "./derive": "./src/lib/derive.js"
+  },
+  "bin": { "theme-forge": "bin/theme-forge.js" },
+  "files": ["src/lib", "bin", "README.md", "LICENSE"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "node scripts/build.js",
+    "test": "node --test test/*.test.js",
+    "pretest": "node scripts/build.js",
+    "dev": "node --experimental-strip-types -e \"import('node:http').then(async({default:h})=>{const{readFile}=await import('node:fs/promises');const{extname,join}=await import('node:path');const T={'.html':'text/html','.js':'text/javascript','.css':'text/css'};h.createServer(async(q,s)=>{const p=join('src',q.url==='/'?'index.html':q.url.slice(1));try{s.writeHead(200,{'content-type':T[extname(p)]||'text/plain'});s.end(await readFile(p))}catch{s.writeHead(404);s.end()}}).listen(8080,()=>console.log('http://localhost:8080'))})\""
+  },
+  "devDependencies": { "jsdom": "^25.0.0" },
+  "repository": { "type": "git", "url": "git+https://github.com/PendoNL/phpstorm-theme-generator.git" },
+  "bugs": { "url": "https://github.com/PendoNL/phpstorm-theme-generator/issues" },
+  "homepage": "https://github.com/PendoNL/phpstorm-theme-generator#readme",
+  "funding": "https://github.com/sponsors/PendoNL"
+}

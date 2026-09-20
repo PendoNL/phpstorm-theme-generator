@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PhpStorm Theme Generator</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="ui/styles.css">
+</head>
+<body>
+<div class="shell">
+
+  <header class="topbar">
+    <div class="brand">
+      <h1>Theme Generator for PhpStorm</h1>
+      <span class="sub">five colours, one PhpStorm plugin</span>
+    </div>
+    <a class="madeby" href="https://pendo.nl/?utm_campaign=tools&amp;utm_source=phpstorm-theme-generator&amp;utm_medium=header&amp;utm_content=textlink" target="_blank" rel="noopener">Made by <strong>pendo.nl</strong></a>
+    <a class="link quiet" id="link-github" href="https://github.com/PendoNL/phpstorm-theme-generator" target="_blank" rel="noopener">GitHub</a>
+    <a class="link quiet" id="link-sponsor" href="https://github.com/sponsors/PendoNL" target="_blank" rel="noopener">Sponsor</a>
+    <button class="link quiet" id="btn-src">Gradle sources</button>
+    <button class="pill primary" id="btn-zip">Download plugin</button>
+  </header>
+
+  <div class="main">
+
+    <!-- ============ RAIL ============ -->
+    <aside class="rail">
+      <div class="rail-scroll">
+
+        <label class="lbl" for="famname">Theme name</label>
+        <input class="field" id="famname" value="Custom Theme" aria-label="Theme family name" spellcheck="false">
+
+        <div class="lblrow">
+          <span class="lbl">Palette</span>
+          <span class="links">
+            <button class="link" id="btn-presets" aria-haspopup="true" aria-expanded="false" aria-controls="presetmenu">Presets &#9662;</button>
+            <button class="link" id="btn-swap" title="Swap anchor and ink">Swap</button>
+            <button class="link" id="btn-random">Shuffle</button>
+          </span>
+          <div class="menu" id="presetmenu" hidden></div>
+        </div>
+
+        <div class="seeds" id="seeds"></div>
+
+        <button class="disclose" id="btn-style" aria-expanded="false" aria-controls="stylebox">
+          <span class="dl-name">Style options</span>
+          <span class="dl-sum" id="style-summary"></span>
+          <span class="dl-caret" id="style-caret">&#9660;</span>
+        </button>
+
+        <div class="stylebox" id="stylebox" hidden>
+
+          <div class="opt">
+            <span class="ol"><label for="opt-density">Density</label>
+              <span class="info" tabindex="0" role="note" aria-label="PhpStorm's Compact Mode overrides the theme's row heights. Turn it off under View, Appearance, Compact Mode to see this setting." data-tip="PhpStorm's Compact Mode overrides the theme's row heights. Turn it off under View &rarr; Appearance &rarr; Compact Mode to see this setting.">i</span></span>
+            <span class="rangewrap">
+              <input type="range" id="opt-density" min="18" max="32" step="1" value="24">
+              <output id="opt-density-out">24px</output>
+            </span>
+          </div>
+
+          <div class="opt">
+            <label class="ol" for="opt-radius">Corners</label>
+            <span class="rangewrap">
+              <input type="range" id="opt-radius" min="0" max="12" step="1" value="6">
+              <output id="opt-radius-out">6px</output>
+            </span>
+          </div>
+
+          <div class="opt">
+            <label class="ol" for="opt-underline">Tab underline</label>
+            <span class="rangewrap">
+              <input type="range" id="opt-underline" min="0" max="4" step="1" value="2">
+              <output id="opt-underline-out">2px</output>
+            </span>
+          </div>
+
+          <div class="opt">
+            <label class="ol" for="opt-fileicons">File icons</label>
+            <select class="field sm" id="opt-fileicons"></select>
+          </div>
+          <p class="note" id="fileicons-note"></p>
+
+          <label class="opt toggle"><span class="ol">Italic comments</span><input type="checkbox" role="switch" id="opt-italic" checked></label>
+          <label class="opt toggle"><span class="ol">Bold keywords</span><input type="checkbox" role="switch" id="opt-bold" checked></label>
+          <label class="opt toggle"><span class="ol">Borderless</span><input type="checkbox" role="switch" id="opt-borderless"></label>
+          <label class="opt toggle"><span class="ol">Accent scrollbars</span><input type="checkbox" role="switch" id="opt-accentscroll"></label>
+          <label class="opt toggle"><span class="ol">Monochrome icons</span><input type="checkbox" role="switch" id="opt-mono"></label>
+          <label class="opt toggle"><span class="ol">Generated wallpaper</span><input type="checkbox" role="switch" id="opt-wallpaper"></label>
+
+          <details class="fontbox">
+            <summary class="opt"><span class="ol">Editor font</span><span class="hintlet">off &mdash; keeps your own</span></summary>
+            <div class="opt"><label class="ol" for="opt-font">Family</label><input class="field sm" id="opt-font" placeholder="JetBrains Mono" spellcheck="false"></div>
+            <div class="opt"><label class="ol" for="opt-fontsize">Size</label><input class="field sm" id="opt-fontsize" type="number" min="8" max="32" placeholder="14"></div>
+            <div class="opt"><label class="ol" for="opt-linespacing">Line height</label><input class="field sm" id="opt-linespacing" type="number" min="0.8" max="3" step="0.1" placeholder="1.2"></div>
+            <label class="opt toggle"><span class="ol">Ligatures</span><input type="checkbox" role="switch" id="opt-ligatures"></label>
+            <p class="note">A theme that sets a font overrides whatever the user
+              picked. Left blank, nothing is written and their choice stands.</p>
+          </details>
+        </div>
+      </div>
+
+      <div class="rail-foot">
+        <div class="derive"><span class="led" id="led"></span><span id="derivation"></span></div>
+        <button class="link quiet" id="btn-audit">See the derivation &rarr;</button>
+      </div>
+    </aside>
+
+    <!-- ============ STAGE ============ -->
+    <main class="stage">
+
+      <div class="views" role="tablist">
+        <button class="view" role="tab" data-view="preview" aria-selected="true"><span>Preview</span></button>
+        <button class="view" role="tab" data-view="tokens" aria-selected="false"><span>Tokens</span><span class="meta" id="meta-tokens"></span></button>
+        <button class="view" role="tab" data-view="contrast" aria-selected="false"><span>Contrast</span><span class="meta" id="meta-contrast"></span></button>
+        <button class="view" role="tab" data-view="files" aria-selected="false"><span>Files</span><span class="meta" id="meta-files"></span></button>
+      </div>
+
+      <!-- preview -->
+      <div class="pane pane-preview" id="view-preview">
+        <div class="stagehead">
+          <div class="varlist" id="varlist"></div>
+          <span class="grow"></span>
+          <div class="segs" role="group" aria-label="Editor content">
+            <button id="lang-php" aria-pressed="true">PHP</button>
+            <button id="lang-blade" aria-pressed="false">Blade</button>
+          </div>
+          <div class="segs" role="group" aria-label="Bottom panel content">
+            <button id="pan-term" aria-pressed="true">Terminal</button>
+            <button id="pan-diff" aria-pressed="false">Diff</button>
+          </div>
+        </div>
+
+        <div class="ide" id="ide">
+
+          <div class="ide-title">
+            <div class="traffic"><i style="background:var(--t-semError)"></i><i style="background:var(--t-semWarning)"></i><i style="background:var(--t-semSuccess)"></i></div>
+            <span class="proj">invoicing-api</span>
+            <span class="crumb">&nbsp;&ndash;&nbsp;app/Http/Controllers/InvoiceController.php</span>
+            <div class="right">
+              <span class="runchip">&#9654; InvoiceTest</span>
+              <span class="iconbtn" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg></span>
+            </div>
+          </div>
+
+          <div class="ide-toolbar">
+            <div class="grp2"><span class="dot" style="background:var(--t-actionsBlue)"></span>Project</div>
+            <div class="grp2"><span class="dot" style="background:var(--t-actionsGreen)"></span>Git</div>
+            <div class="grp2"><span class="dot" style="background:var(--t-actionsYellow)"></span>Database</div>
+            <div class="grp2"><span class="dot" style="background:var(--t-actionsGrey)"></span>Terminal</div>
+          </div>
+
+          <div class="ide-body">
+
+            <nav class="ide-side">
+              <div class="side-head">Project</div>
+              <div class="tree" id="tree"></div>
+            </nav>
+
+            <div class="ide-mid">
+              <div class="tabs" role="tablist">
+                <div class="tab" role="tab" aria-selected="true">
+                  <span class="ic" style="background:var(--t-actionsBlue);border-radius:2px"></span>
+                  InvoiceController.php <span class="dotmod"></span>
+                </div>
+                <div class="tab" role="tab" aria-selected="false">
+                  <span class="ic" style="background:var(--t-actionsGreen);border-radius:2px"></span>
+                  invoice.blade.php
+                </div>
+                <div class="tab" role="tab" aria-selected="false">
+                  <span class="ic" style="background:var(--t-actionsYellow);border-radius:2px"></span>
+                  composer.json
+                </div>
+              </div>
+
+              <div class="breadcrumbs">
+                app &rsaquo; Http &rsaquo; Controllers &rsaquo; <span style="color:var(--t-fgMuted)">InvoiceController</span> &rsaquo; store()
+              </div>
+
+              <div class="editor">
+                <div class="gutter" id="gutter"></div>
+                <div class="code" id="code"></div>
+                <div class="cpop" id="cpop">
+                  <div class="ci on"><span class="ic" style="width:10px;height:10px;border-radius:2px;background:var(--t-objectsPurple)"></span><span><span class="m">cust</span>omer</span><span class="t">Customer</span></div>
+                  <div class="ci"><span class="ic" style="width:10px;height:10px;border-radius:2px;background:var(--t-objectsPurple)"></span><span><span class="m">cust</span>omerId</span><span class="t">int</span></div>
+                  <div class="ci"><span class="ic" style="width:10px;height:10px;border-radius:2px;background:var(--t-objectsBlue)"></span><span><span class="m">cust</span>omerEmail()</span><span class="t">string</span></div>
+                  <div class="ci"><span class="ic" style="width:10px;height:10px;border-radius:2px;background:var(--t-objectsBlue)"></span><span><span class="m">cust</span>omFields()</span><span class="t">array</span></div>
+                  <div class="ad">Press &#8963;. to choose lookup</div>
+                </div>
+              </div>
+
+              <div class="panel" id="panel">
+                <div class="panel-head">
+                  <div class="ptab" aria-selected="true" id="pt-a">Terminal</div>
+                  <div class="ptab" aria-selected="false">Problems</div>
+                  <div class="ptab" aria-selected="false">Run</div>
+                  <span class="x">&#10005;</span>
+                </div>
+                <div class="term" id="term"></div>
+                <div class="diff" id="diff" hidden></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="status">
+            <span class="brn">
+              <svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="4" r="2"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="8" r="2"/><path d="M4 6v4M6 12h2a2 2 0 0 0 2-2V9"/></svg>
+              feature/credit-notes
+            </span>
+            <span>UTF-8</span>
+            <span>PHP 8.3</span>
+            <div class="right">
+              <span style="color:var(--t-semWarning)">&#9888; 2</span>
+              <span style="color:var(--t-semError)">&#9679; 1</span>
+              <span>48:17</span>
+              <span class="mem"><i></i></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- tokens -->
+      <div class="pane pane-tokens" id="view-tokens" hidden>
+        <div class="tokhead">
+          <span id="tokcount"></span>
+          <span class="grow"></span>
+          <input class="field sm" id="tokfilter" placeholder="Filter tokens" spellcheck="false" aria-label="Filter tokens">
+        </div>
+        <div class="tokens" id="tokens"></div>
+      </div>
+
+      <!-- contrast -->
+      <div class="pane pane-contrast" id="view-contrast" hidden>
+        <div class="contrast-in">
+          <h2 id="audit-title"></h2>
+          <p class="lede">Ratios are measured against the surface each token actually
+            sits on. <span id="repairnote"></span></p>
+          <div class="audit" id="audit"></div>
+          <p class="note">Each variant re-runs the whole derivation on transformed
+            seeds &mdash; nothing is hand-tuned. The audit above is for the variant
+            selected in the preview; all of them ship in the plugin.</p>
+        </div>
+      </div>
+
+      <!-- files -->
+      <div class="pane pane-files" id="view-files" hidden>
+        <div class="filelist">
+          <div class="files" id="files"></div>
+          <p class="note">The plugin zip is a built distribution
+            (<code>&lt;name&gt;/lib/&lt;name&gt;.jar</code>). Install with
+            Settings &rsaquo; Plugins &rsaquo; &#9881; &rsaquo; Install Plugin from Disk,
+            then pick the theme under Appearance. &ldquo;Gradle sources&rdquo; gives the
+            editable project instead.</p>
+        </div>
+        <pre class="out" id="filepreview"></pre>
+      </div>
+
+    </main>
+  </div>
+</div>
+<script type="module" src="ui/app.js"></script>
+</body>
+</html>
