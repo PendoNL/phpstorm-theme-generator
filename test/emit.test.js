@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { VARIANTS, deriveTokens } from '../src/lib/derive.js';
+import { cr } from '../src/lib/color.js';
 import { buildThemeJson } from '../src/lib/emit-theme.js';
 import { buildSchemeXml } from '../src/lib/emit-scheme.js';
 import { buildPluginXml, uuidFrom } from '../src/lib/emit-plugin.js';
@@ -101,6 +102,75 @@ test('all four scrollbar families are present', () => {
     assert.ok(xml.includes(`<option name="${p}thumbColor"`), `missing ${p}`);
 });
 
+/* ---- other languages ----
+   Python, Go, Java, Kotlin, Rust and the rest have no keys of their own here:
+   they resolve through the platform's Language Defaults. So those must be
+   complete, and legible, in every variant - not only the ones PHP exercises. */
+
+// Every constant in com.intellij.openapi.editor.DefaultLanguageHighlighterColors
+// (intellij.platform.core.jar, PhpStorm 2025). Extend it when the platform does.
+const LANGUAGE_DEFAULTS = [
+  'DEFAULT_ATTRIBUTE', 'DEFAULT_BLOCK_COMMENT', 'DEFAULT_BRACES',
+  'DEFAULT_BRACKETS', 'DEFAULT_CLASS_NAME', 'DEFAULT_CLASS_REFERENCE',
+  'DEFAULT_COMMA', 'DEFAULT_CONSTANT', 'DEFAULT_DOC_COMMENT',
+  'DEFAULT_DOC_COMMENT_TAG', 'DEFAULT_DOC_COMMENT_TAG_VALUE', 'DEFAULT_DOC_MARKUP',
+  'DEFAULT_DOT', 'DEFAULT_ENTITY', 'DEFAULT_FUNCTION_CALL',
+  'DEFAULT_FUNCTION_DECLARATION', 'DEFAULT_GLOBAL_VARIABLE', 'DEFAULT_HIGHLIGHTED_REFERENCE',
+  'DEFAULT_IDENTIFIER', 'DEFAULT_INSTANCE_FIELD', 'DEFAULT_INSTANCE_METHOD',
+  'DEFAULT_INTERFACE_NAME', 'DEFAULT_INVALID_STRING_ESCAPE', 'DEFAULT_KEYWORD',
+  'DEFAULT_LABEL', 'DEFAULT_LINE_COMMENT', 'DEFAULT_LOCAL_VARIABLE',
+  'DEFAULT_METADATA', 'DEFAULT_NUMBER', 'DEFAULT_OPERATION_SIGN',
+  'DEFAULT_PARAMETER', 'DEFAULT_PARENTHS', 'DEFAULT_PREDEFINED_SYMBOL',
+  'DEFAULT_REASSIGNED_LOCAL_VARIABLE', 'DEFAULT_REASSIGNED_PARAMETER', 'DEFAULT_SEMICOLON',
+  'DEFAULT_STATIC_FIELD', 'DEFAULT_STATIC_METHOD', 'DEFAULT_STRING',
+  'DEFAULT_TAG', 'DEFAULT_TEMPLATE_LANGUAGE_COLOR', 'DEFAULT_VALID_STRING_ESCAPE'
+];
+const PALETTES = [
+  PAL,
+  ['#FBF9F3', '#2B2A26', '#3C6E9F', '#B07B26', '#4E7A45'],   // light-first
+  ['#122738', '#E1EFFF', '#3AD900', '#FFC600', '#80FCFF'],   // loud accents, hard to carry to light
+  ['#191724', '#E0DEF4', '#9CCFD8', '#F6C177', '#31748F']    // pastel accents
+];
+const SYNTAX_KEY = /^(DEFAULT_|PHP_|BLADE_|TWIG_|JS\.|TS\.|CSS\.|SASS_|HTML_|XML_|JSON\.|YAML_|MARKDOWN_|REGEXP\.|PROPERTIES\.)/;
+const attributes = x => [...x.matchAll(/<option name="([A-Za-z0-9_.]+)">\s*<value>([\s\S]*?)<\/value>/g)]
+  .map(m => [m[1], Object.fromEntries([...m[2].matchAll(/<option name="([A-Z_]+)" value="([^"]*)"/g)].map(o => [o[1], o[2]]))]);
+
+test('every variant sets every platform language default', () => {
+  for (const p of PALETTES) for (const v of VARIANTS) {
+    const set = new Set(attributes(buildSchemeXml(deriveTokens(p, v.id), { name: 'x' })).map(a => a[0]));
+    const missing = LANGUAGE_DEFAULTS.filter(k => !set.has(k));
+    assert.deepEqual(missing, [], `${p[0]} ${v.id}`);
+  }
+});
+
+test('no syntax colour of any language drops below 3:1 in any variant', () => {
+  const hex = h => '#' + h.padStart(6, '0');
+  for (const p of PALETTES) for (const v of VARIANTS) {
+    const r = deriveTokens(p, v.id);
+    for (const [key, o] of attributes(buildSchemeXml(r, { name: 'x' }))) {
+      if (!SYNTAX_KEY.test(key) || !o.FOREGROUND) continue;
+      const ratio = cr(hex(o.FOREGROUND), o.BACKGROUND ? hex(o.BACKGROUND) : r.T.bgEditor);
+      assert.ok(ratio >= 3, `${key} is ${ratio.toFixed(2)}:1 in ${v.id} of ${p[0]}`);
+    }
+  }
+});
+
+test('text that has to be read - TODOs, warnings, errors, links, rainbow brackets - holds 4.5:1 in every variant', () => {
+  const MUST_READ = /^(TODO_DEFAULT_ATTRIBUTES|HYPERLINK_ATTRIBUTES|CTRL_CLICKABLE|BAD_CHARACTER|WRONG_REFERENCES_ATTRIBUTES|RAINBOW_COLOR\d|LINE_(FULL|PARTIAL|NONE)_COVERAGE|LOG_(WARNING|ERROR)_OUTPUT|CONSOLE_(ERROR|SYSTEM)_OUTPUT|CONSOLE_USER_INPUT|DEBUGGER_INLINED_VALUES_MODIFIED|DEFAULT_INVALID_STRING_ESCAPE|MARKDOWN_LINK_TEXT)$/;
+  const hex = h => '#' + h.padStart(6, '0');
+  let seen = 0;
+  for (const p of PALETTES) for (const v of VARIANTS) {
+    const r = deriveTokens(p, v.id);
+    for (const [key, o] of attributes(buildSchemeXml(r, { name: 'x' }))) {
+      if (!MUST_READ.test(key) || !o.FOREGROUND || o.BACKGROUND) continue;
+      seen++;
+      const ratio = cr(hex(o.FOREGROUND), r.T.bgEditor);
+      assert.ok(ratio >= 4.45, `${key} is ${ratio.toFixed(2)}:1 in ${v.id} of ${p[0]}`);
+    }
+  }
+  assert.ok(seen > 500, 'the keys above really are in the scheme');
+});
+
 test('plugin.xml registers one provider per variant with stable ids', () => {
   const variants = VARIANTS.map(v => ({ ...v, name: `Acme ${v.label}`, slug: `acme-${v.id}` }));
   const meta = { family: 'Acme', id: 'com.acme.theme', author: 'test' };
@@ -114,6 +184,36 @@ test('plugin.xml registers one provider per variant with stable ids', () => {
   assert.equal(new Set(ids).size, VARIANTS.length, 'ids must be unique');
 });
 
+test('plugin.xml carries what a Marketplace listing needs', () => {
+  const variants = VARIANTS.map(v => ({ ...v, name: `Acme ${v.label}`, slug: `acme-${v.id}` }));
+  const meta = { family: 'Acme', id: 'com.acme.theme', author: 'A & B', version: '1.2.0',
+                 url: 'https://acme.test/?a=1&b=2', changeNotes: 'Fixed <tabs>' };
+  const x = buildPluginXml(meta, variants);
+  assert.match(x, /<version>1\.2\.0<\/version>/);
+  assert.match(x, /<vendor url="https:\/\/acme\.test\/\?a=1&amp;b=2">A &amp; B<\/vendor>/);
+  assert.match(x, /<change-notes><!\[CDATA\[\s*<p>Fixed &lt;tabs&gt;<\/p>\s*\]\]><\/change-notes>/);
+  assert.match(x, /<a href="https:\/\/phpstorm-theme-generator\.com[^"]*">/, 'links back to the generator');
+
+  const bare = buildPluginXml({ family: 'Acme', id: 'com.acme.theme', author: 'test' }, variants);
+  assert.match(bare, /<version>1\.0\.0<\/version>/);
+  assert.match(bare, /<vendor>test<\/vendor>/);
+  assert.ok(!/change-notes/.test(bare), 'no empty change-notes');
+  assert.match(bare, /phpstorm-theme-generator\.com/, 'the backlink is not optional');
+});
+
+test('buildPlugin threads version, url and change notes through to the jar and the Gradle project', () => {
+  const p = buildPlugin({ palette: PAL, family: 'Acme', id: 'com.acme.theme', author: 'Acme BV',
+                          version: '2.0.1', url: 'https://acme.test', changeNotes: 'New light variant' });
+  const xmlBody = p.jarEntries.find(e => e.path === 'META-INF/plugin.xml').body;
+  assert.match(xmlBody, /<version>2\.0\.1<\/version>/);
+  assert.match(xmlBody, /<vendor url="https:\/\/acme\.test">Acme BV<\/vendor>/);
+  assert.match(xmlBody, /New light variant/);
+  const gradle = p.src.find(e => e.path === 'acme-src/build.gradle.kts').body;
+  assert.match(gradle, /^version = "2\.0\.1"$/m);
+  assert.throws(() => buildPlugin({ palette: PAL, version: '1.0"; evil' }), /version/);
+  assert.throws(() => buildPlugin({ palette: PAL, url: 'javascript:alert(1)' }), /url/);
+});
+
 test('uuidFrom is stable and well-formed', () => {
   assert.equal(uuidFrom('x'), uuidFrom('x'));
   assert.notEqual(uuidFrom('x'), uuidFrom('y'));
@@ -121,7 +221,7 @@ test('uuidFrom is stable and well-formed', () => {
 });
 
 test('buildPlugin rejects a malformed palette', () => {
-  assert.throws(() => buildPlugin({ palette: ['#000000'] }), /exactly 5/);
+  assert.throws(() => buildPlugin({ palette: ['#000000'] }), /2 to 5/);
   assert.throws(() => buildPlugin({ palette: ['#000000', '#fff', 'nope', '#111111', '#222222'] }), /bad hex/);
 });
 
@@ -149,4 +249,14 @@ test('the scheme takes its caret row from the token, so neon gets its tint', () 
   const neon = deriveTokens(['#0D0221', '#F5F0FF', '#FF2A6D', '#05D9E8', '#39FF14'], 'neon');
   const neonXml = buildSchemeXml(neon, { name: 'Acme Neon' });
   assert.ok(neonXml.includes(`name="CARET_ROW_COLOR" value="${neon.T.caretRow.slice(1).toLowerCase()}"`));
+});
+
+test('buildPlugin takes two to five colours', () => {
+  for (const palette of [['#000000', '#00FF41'], PAL.slice(0, 3), PAL.slice(0, 4), PAL]) {
+    const p = buildPlugin({ palette, family: 'Acme', id: 'com.acme.theme', variants: ['dark', 'light'] });
+    assert.equal(p.variants.length, 2);
+    const icon = p.jarEntries.find(e => e.path === 'META-INF/pluginIcon.svg').body;
+    assert.equal((icon.match(/fill="#[0-9A-Fa-f]{6}"/g) || []).length, 4, 'the icon is drawn from derived seeds too');
+  }
+  assert.throws(() => buildPlugin({ palette: ['#000000'] }), /2 to 5/);
 });

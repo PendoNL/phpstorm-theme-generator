@@ -5,7 +5,7 @@
  * Shared by the web UI and the CLI so there is exactly one definition of what
  * "a plugin" is. Returns byte arrays, not files — callers decide where they go.
  */
-import { VARIANTS, deriveTokens } from './derive.js';
+import { VARIANTS, deriveTokens, expandSeeds } from './derive.js';
 import { buildThemeJson } from './emit-theme.js';
 import { buildSchemeXml } from './emit-scheme.js';
 import { buildPluginXml, buildGradle, buildThemeLicense, PLUGIN_ICON } from './emit-plugin.js';
@@ -18,26 +18,35 @@ import { ICON_PROVIDER_CLASS_NAME, ICON_PROVIDER_JAVA, iconProviderClassBytes } 
 export const slugify = s =>
   String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'theme';
 
+export const isVersion = s => /^\d+(\.\d+){0,3}(-[0-9A-Za-z.]+)?$/.test(String(s));
+export const isWebUrl = s => /^https?:\/\/[^\s"<>]+$/.test(String(s));
+
 /**
  * @param {object}   opts
- * @param {string[]} opts.palette  five #RRGGBB seeds, in role order
+ * @param {string[]} opts.palette  two to five #RRGGBB seeds, in role order
  * @param {string}   opts.family   display name, e.g. "Custom Theme"
  * @param {string}   opts.id       plugin id, e.g. "nl.pendo.custom-theme"
  * @param {string}   opts.author   vendor string
+ * @param {string}   [opts.version]     plugin version, digits and dots (default 1.0.0)
+ * @param {string}   [opts.url]         vendor website, http(s)
+ * @param {string}   [opts.changeNotes] what changed in this version
  * @param {string[]} [opts.variants] variant ids; defaults to all of them
  * @param {object}   [opts.options]  style options — see options.js
  */
 export function buildPlugin({ palette, family = 'Custom Theme', id, author = 'phpstorm-theme-generator',
+                              version = '1.0.0', url = null, changeNotes = null,
                               variants = VARIANTS.map(v => v.id), options = {} } = {}) {
   const opts = resolveOptions(options);
-  if (!Array.isArray(palette) || palette.length !== 5)
-    throw new TypeError('palette must be exactly 5 hex colours');
+  if (!Array.isArray(palette) || palette.length < 2 || palette.length > 5)
+    throw new TypeError('palette must be 2 to 5 hex colours');
   for (const c of palette)
     if (!/^#[0-9a-fA-F]{6}$/.test(c)) throw new TypeError(`bad hex: ${c}`);
+  if (!isVersion(version)) throw new TypeError(`bad version: ${version}`);
+  if (url && !isWebUrl(url)) throw new TypeError(`bad url: ${url}`);
 
   const root = slugify(family);
   const pluginId = id || `com.example.${root}`;
-  const meta = { family, id: pluginId, author };
+  const meta = { family, id: pluginId, author, version, url, changeNotes, colours: palette.length };
 
   const chosen = VARIANTS.filter(v => variants.includes(v.id));
   if (!chosen.length) throw new Error('no known variants selected');
@@ -47,9 +56,10 @@ export function buildPlugin({ palette, family = 'Custom Theme', id, author = 'ph
     return { ...v, name, slug: slugify(name), res: deriveTokens(palette, v.id) };
   });
 
+  const seeds = expandSeeds(palette).seeds;
   const iconSvg = PLUGIN_ICON
-    .replace('#COL1', palette[0]).replace('#COL3', palette[2])
-    .replace('#COL4', palette[3]).replace('#COL5', palette[4]);
+    .replace('#COL1', seeds[0]).replace('#COL3', seeds[2])
+    .replace('#COL4', seeds[3]).replace('#COL5', seeds[4]);
 
   // --- the jar: what the IDE actually reads ---
   const jarEntries = [

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Part of phpstorm-theme-generator — see LICENSE.
 /**
- * CLI: five hex colours in, an installable plugin .zip out.
+ * CLI: two to five hex colours in, an installable plugin .zip out.
  *
  *   npx phpstorm-theme-generator \
  *     --name "Acme" --id com.acme.theme \
@@ -20,16 +20,23 @@ const has = name => argv.includes('--' + name);
 if (has('help') || !argv.length) {
   console.log(`phpstorm-theme-generator
 
-  theme-forge [options] <C1> <C2> <C3> <C4> <C5>
+  theme-forge [options] <C1> <C2> [C3] [C4] [C5]
 
   C1  anchor / editor background      C2  ink / default text
   C3  primary accent                  C4  secondary accent
   C5  tertiary accent
 
+  Two to five colours. Whatever is left out is derived: two colours give a
+  duotone in tones of the ink, three and four fill the missing accents in
+  around the hue circle.
+
 Options
   --name <s>      theme family name            (default: Custom Theme)
   --id <s>        plugin id                    (default: com.example.<slug>-theme)
   --author <s>    vendor string
+  --version <s>   plugin version; raise it for every update   (default: 1.0.0)
+  --url <s>       vendor website, shown on the Marketplace listing
+  --notes <s>     change notes for this version
   --variants <s>  comma-separated subset of: ${VARIANTS.map(v => v.id).join(', ')}
   --out <path>    output .zip                  (default: ./<slug>.zip)
 
@@ -61,8 +68,8 @@ Style
 const colours = argv.filter(a => /^#?[0-9a-fA-F]{6}$/.test(a))
   .map(c => (c.startsWith('#') ? c : '#' + c).toUpperCase());
 
-if (colours.length !== 5) {
-  console.error(`error: need exactly 5 hex colours, got ${colours.length}`);
+if (colours.length < 2 || colours.length > 5) {
+  console.error(`error: need 2 to 5 hex colours, got ${colours.length}`);
   process.exit(2);
 }
 
@@ -98,6 +105,9 @@ try {
     palette: colours, family,
     id: flag('id', undefined),
     author: flag('author', 'phpstorm-theme-generator'),
+    version: flag('version', '1.0.0'),
+    url: flag('url', null),
+    changeNotes: flag('notes', null),
     options: styleOptions,
     ...(variants.length ? { variants } : {})
   });

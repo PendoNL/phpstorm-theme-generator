@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { VARIANTS, deriveTokens } from '../src/lib/derive.js';
+import { VARIANTS, deriveTokens, expandSeeds } from '../src/lib/derive.js';
 import { cr, toOklch } from '../src/lib/color.js';
 
 const PALETTES = {
@@ -212,4 +212,106 @@ test('the light variants differ in the ways their names promise', () => {
     .map(k => toOklch(deriveTokens(p, id).T[k]).c));
   assert.ok(chroma('soft') < chroma('light'), 'soft mutes the accents');
   assert.ok(chroma('light-vivid') > chroma('light'), 'light vivid pushes them');
+});
+
+/* ---- palettes of two, three and four colours ---- */
+const SYN = ['synKeyword', 'synString', 'synNumber', 'synType', 'synFunction', 'synConstant'];
+
+test('five colours derive exactly what they did before shorter palettes existed', async () => {
+  const { createHash } = await import('node:crypto');
+  const P = [PALETTES['blue/amber/green'], ['#FBF9F3', '#2B2A26', '#3C6E9F', '#B07B26', '#4E7A45'],
+             ['#122738', '#E1EFFF', '#3AD900', '#FFC600', '#80FCFF']];
+  const all = P.map(p => VARIANTS.map(v => { const r = deriveTokens(p, v.id); return [r.T, r.P, r.repairs]; }));
+  assert.equal(createHash('sha256').update(JSON.stringify(all)).digest('hex'),
+    '75a86febcd7057dfc67c1aaca5ca94149c54c114dd2fd75e40ffb64498b3eb03');
+});
+
+test('expandSeeds fills a short palette up to five and keeps what it was given', () => {
+  for (const p of [['#000000', '#00FF41'], ['#1B1D23', '#D4D7DE', '#4C8DF6'],
+                   ['#1B1D23', '#D4D7DE', '#4C8DF6', '#E5A33C']]) {
+    const { seeds } = expandSeeds(p);
+    assert.equal(seeds.length, 5);
+    assert.deepEqual(seeds.slice(0, p.length), p);
+    for (const c of seeds) assert.match(c, /^#[0-9A-Fa-f]{6}$/);
+  }
+  const five = PALETTES.nord;
+  assert.deepEqual(expandSeeds(five), { seeds: five, tonal: false });
+  assert.throws(() => expandSeeds(['#000000']), /2 to 5/);
+  assert.throws(() => expandSeeds([...five, '#FFFFFF']), /2 to 5/);
+});
+
+test('two colours: every syntax colour stays in the ink\'s hue and is told apart by lightness', () => {
+  const ink = toOklch('#00FF41');
+  for (const v of VARIANTS.filter(v => v.mode === 'dark')) {
+    const { T } = deriveTokens(['#000000', '#00FF41'], v.id);
+    for (const k of SYN) {
+      const o = toOklch(T[k]);
+      if (o.c >= 0.04) assert.ok(hueGap(o.h, ink.h) < 25, `${v.id} ${k} ${T[k]} left the green`);
+      assert.ok(cr(T[k], T.bgEditor) >= 4.5, `${v.id} ${k} contrast`);
+    }
+    assert.ok(Math.abs(toOklch(T.synKeyword).l - toOklch(T.synString).l) >= 0.1, `${v.id} keyword vs string`);
+    assert.ok(new Set(SYN.map(k => T[k])).size >= 5, `${v.id} has depth, not one flat green`);
+  }
+});
+
+test('two colours: white on black stays grey', () => {
+  const { T } = deriveTokens(['#000000', '#FFFFFF'], 'dark');
+  for (const k of SYN) assert.ok(toOklch(T[k]).c < 0.04, `${k} ${T[k]} picked up colour`);
+});
+
+test('three colours: the two missing accents land well away from the one given, and from each other', () => {
+  const { seeds, tonal } = expandSeeds(['#1B1D23', '#D4D7DE', '#4C8DF6']);
+  assert.equal(tonal, false);
+  const [h3, h4, h5] = seeds.slice(2).map(c => toOklch(c).h);
+  assert.ok(hueGap(h3, h4) >= 60 && hueGap(h3, h5) >= 60 && hueGap(h4, h5) >= 60, seeds.join(' '));
+});
+
+test('three colours with a grey accent fall back to tone, not to invented hues', () => {
+  const { seeds, tonal } = expandSeeds(['#111111', '#EEEEEE', '#888888']);
+  assert.equal(tonal, true);
+  for (const c of seeds) assert.ok(toOklch(c).c < 0.04);
+});
+
+test('four colours: the fifth takes the widest free stretch of the hue circle', () => {
+  const { seeds } = expandSeeds(['#1B1D23', '#D4D7DE', '#4C8DF6', '#E5A33C']);
+  const [h3, h4, h5] = seeds.slice(2).map(c => toOklch(c).h);
+  assert.ok(hueGap(h5, h3) >= 45 && hueGap(h5, h4) >= 45, seeds.join(' '));
+});
+
+test('short palettes hold the contrast floors in every variant', () => {
+  for (const p of [['#000000', '#00FF41'], ['#FFFFFF', '#1A1A1A'], ['#1B1D23', '#D4D7DE', '#4C8DF6'],
+                   ['#122738', '#E1EFFF', '#3AD900', '#FFC600']])
+    for (const v of VARIANTS) {
+      const { T } = deriveTokens(p, v.id);
+      for (const [k, c] of Object.entries(T)) assert.match(c, /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/, `${k} in ${v.id}`);
+      for (const k of SYN) assert.ok(cr(T[k], T.bgEditor) >= 4.5, `${p.join(',')} ${v.id} ${k}`);
+    }
+});
+
+test('a duotone keeps its depth on a light page too', () => {
+  for (const p of [['#000000', '#00FF41'], ['#0B1020', '#FFB000'], ['#FFFFFF', '#1A1A1A']])
+    for (const v of VARIANTS) {
+      const { T } = deriveTokens(p, v.id);
+      const L = ['synKeyword', 'synType', 'synString'].map(k => toOklch(T[k]).l).sort((a, b) => a - b);
+      assert.ok(L[1] - L[0] >= 0.06 && L[2] - L[1] >= 0.06,
+        `${p.join(' ')} ${v.id}: keyword/type/string lightness ${L.map(x => x.toFixed(2)).join(' ')}`);
+    }
+});
+
+test('a plainly coloured anchor is honoured: a yellow page stays yellow', () => {
+  const pal = ['#FFE600', '#000000', '#4C8DF6', '#E5A33C', '#5CC98A'];
+  const want = toOklch(pal[0]);
+  for (const id of ['dark', 'darker', 'contrast', 'muted', 'vivid']) {
+    const { T } = deriveTokens(pal, id);
+    for (const k of ['bgEditor', 'bgBase', 'bgRaised', 'bgSunken', 'bgOverlay', 'bgHover', 'bgPress']) {
+      const o = toOklch(T[k]);
+      assert.ok(o.c >= 0.12, `${id} ${k} ${T[k]} went grey (chroma ${o.c.toFixed(3)})`);
+      assert.ok(hueGap(o.h, want.h) < 15, `${id} ${k} ${T[k]} changed hue`);
+    }
+    assert.ok(cr(T.fgDefault, T.bgEditor) >= 7, `${id} text`);
+    for (const k of SYN) assert.ok(cr(T[k], T.bgEditor) >= 4.5, `${id} ${k}`);
+  }
+  // deep and saturated works too, and OLED still means black
+  assert.ok(toOklch(deriveTokens(['#5B0A91', '#FFFFFF', '#FF2A6D', '#05D9E8', '#39FF14'], 'dark').T.bgEditor).c >= 0.12);
+  assert.equal(deriveTokens(pal, 'oled').T.bgEditor, '#000000');
 });

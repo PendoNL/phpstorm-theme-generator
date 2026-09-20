@@ -18,25 +18,33 @@ export function uuidFrom(str){
   const hx=out.join('');
   return `${hx.slice(0,8)}-${hx.slice(8,12)}-4${hx.slice(13,16)}-a${hx.slice(17,20)}-${hx.slice(20,32)}`;
 }
+/* Where every generated plugin points back to. The credit the theme licence
+   asks for, written once so nobody has to remember it. */
+export const GENERATOR_URL='https://phpstorm-theme-generator.com/?utm_source=jetbrains-marketplace&utm_medium=plugin&utm_campaign=generated-theme';
 export function buildPluginXml(meta,variants,{iconProvider=null}={}){
-  const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const provs=variants.map(v=>
 `    <themeProvider id="${uuidFrom(meta.id+'::'+v.slug)}"
                    path="/themes/${v.slug}.theme.json"/>`).join('\n');
   return `<idea-plugin>
   <id>${esc(meta.id)}</id>
   <name>${esc(meta.family)}</name>
-  <version>1.0.0</version>
-  <vendor>${esc(meta.author)}</vendor>
+  <version>${esc(meta.version||'1.0.0')}</version>
+  <vendor${meta.url?` url="${esc(meta.url)}"`:''}>${esc(meta.author)}</vendor>
 
   <idea-version since-build="233"/>
 
   <depends>com.intellij.modules.platform</depends>
 
   <description><![CDATA[
-    <p>${esc(meta.family)} &mdash; a theme family generated from five seed colours.</p>
+    <p>${esc(meta.family)} &mdash; a theme family generated from ${['two','three','four'][meta.colours-2]||'five'} seed colours.</p>
     <p>Variants: ${variants.map(v=>esc(v.name)).join(', ')}.</p>
-  ]]></description>
+    <p>Made with <a href="${esc(GENERATOR_URL)}">phpstorm-theme-generator</a> &mdash; build your own theme family from two to five colours.</p>
+  ]]></description>${meta.changeNotes?`
+
+  <change-notes><![CDATA[
+    <p>${esc(meta.changeNotes)}</p>
+  ]]></change-notes>`:''}
 
   <extensions defaultExtensionNs="com.intellij">
 ${provs}${iconProvider?`
@@ -56,7 +64,7 @@ ${java?'    id("java")\n':''}    id("org.jetbrains.intellij.platform") version "
 }
 
 group = "${meta.id.split('.').slice(0,-1).join('.')||'com.example'}"
-version = "1.0.0"
+version = "${meta.version||'1.0.0'}"
 
 repositories {
     mavenCentral()

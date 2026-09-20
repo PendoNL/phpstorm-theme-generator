@@ -33,12 +33,14 @@ const PRESETS=[
 ];
 const state={
   palette:[...PRESETS[0].p],
+  count:5,
   variant:'dark',
   family:'Custom Theme',
   lang:'php',
   view:'preview',
   query:'',
   file:0,
+  download:{mode:'all',set:['dark','light']},
   options:{...DEFAULT_OPTIONS}
 };
 let current=null, generated=null, audit={passed:0,total:0}, themeKeys=0;
@@ -69,8 +71,13 @@ function buildSeedInputs(){
     });
   });
 }
+/* The colours actually in play. The rest stay in state, so going back up to
+   five brings back what was there rather than the derived stand-ins. */
+const activePalette=()=>state.palette.slice(0,state.count);
 function syncInputs(){
   state.palette.forEach((c,i)=>{ $('#col'+i).value=c; $('#hex'+i).value=c; });
+  document.querySelectorAll('.seed').forEach((el,i)=>{ el.hidden=i>=state.count; });
+  $('#seedcount').value=String(state.count);
   const key=state.palette.join();
   [...document.querySelectorAll('.preset')].forEach((b,i)=>
     b.setAttribute('aria-pressed',String(PRESETS[i].p.join()===key)));
@@ -90,6 +97,7 @@ function buildPresets(){
     const b=e.target.closest('.preset'); if(!b) return;
     open(false);
     state.palette=[...PRESETS[+b.dataset.i].p];
+    state.count=5;
     state.family=PRESETS[+b.dataset.i].n;
     $('#famname').value=state.family;
     syncInputs(); render();
@@ -110,7 +118,7 @@ function buildVariants(){
 }
 function paintVariantChips(){
   for(const v of VARIANTS){
-    const r=build(state.palette,v.id);
+    const r=build(activePalette(),v.id);
     const el=document.getElementById('chip-'+v.id);
     if(!el) continue;
     el.style.background=r.T.bgEditor;
@@ -339,8 +347,10 @@ function renderAudit(res){
 /* ---- file generation: all the real work lives in lib/package.js ---- */
 function generate(){
   const fam=state.family.trim()||'Custom Theme';
-  const g=buildPlugin({palette:state.palette,family:fam,
+  const g=buildPlugin({palette:activePalette(),family:fam,
     id:'com.example.'+slugify(fam)+'-theme',author:'phpstorm-theme-generator',
+    ...(state.download.mode==='custom'&&state.download.set.length
+      ? {variants:state.download.set} : {}),
     options:{...state.options,
       wallpaper: state.options.wallpaper
         ? {transparency:12,fill:'scale',anchor:'center'} : null}});
@@ -415,7 +425,7 @@ function toast(msg){
 
 /* ---- main render ---- */
 function render(){
-  const res=build(state.palette,state.variant);
+  const res=build(activePalette(),state.variant);
   current=res; generated=null;
   applyPreviewVars(res);
   applyStyleToPreview(res);
@@ -451,6 +461,12 @@ $('#btn-style').addEventListener('click',()=>{
   $('#stylebox').hidden=!$('#stylebox').hidden; syncStyleSummary();
 });
 $('#famname').addEventListener('input',e=>{state.family=e.target.value;render();});
+$('#seedcount').addEventListener('change',e=>{
+  state.count=+e.target.value;
+  syncInputs(); render();
+});
+
+
 $('#tokens').addEventListener('click',e=>{
   const b=e.target.closest('.tok'); if(!b) return;
   navigator.clipboard?.writeText(b.dataset.v).then(()=>toast('Copied '+b.dataset.v),()=>{});
@@ -459,18 +475,49 @@ $('#btn-swap').addEventListener('click',()=>{
   [state.palette[0],state.palette[1]]=[state.palette[1],state.palette[0]];
   syncInputs(); render();
 });
+/* Shuffle history: every shuffle, plus whatever was on screen before each one
+   if it was not a shuffle - a preset, a hand-tuned colour - so stepping back
+   never skips something you had. A new shuffle always goes on the end, even
+   from the middle, so nothing that lay ahead is lost. */
+const shuffles={list:[],at:-1,max:100};
+const snap=()=>({palette:[...state.palette],count:state.count});
+function syncShuffleNav(){
+  $('#btn-shuffle-prev').disabled=shuffles.at<=0;
+  $('#btn-shuffle-next').disabled=shuffles.at>=shuffles.list.length-1;
+}
+function stepShuffle(d){
+  const e=shuffles.list[shuffles.at+d]; if(!e) return;
+  shuffles.at+=d;
+  state.palette=[...e.palette]; state.count=e.count;
+  syncShuffleNav(); syncInputs(); render();
+}
+$('#btn-shuffle-prev').addEventListener('click',()=>stepShuffle(-1));
+$('#btn-shuffle-next').addEventListener('click',()=>stepShuffle(1));
 $('#btn-random').addEventListener('click',()=>{
+  const was=snap(), here=shuffles.list[shuffles.at];
+  if(!here||here.count!==was.count||here.palette.join()!==was.palette.join()){
+    shuffles.list.push(was);
+  }
   const baseH=Math.random()*360;
   const dark=Math.random()>0.25;
   const jitter=()=> (Math.random()-0.5)*30;
-  const anchor=fromOklch(dark?0.16+Math.random()*0.06:0.965,0.014,baseH);
-  const ink   =fromOklch(dark?0.86:0.24,0.012,baseH);
+  const loud=state.count===2&&Math.random()<0.3;
+  const anchor=fromOklch(dark?0.16+Math.random()*0.06:(loud?0.92:0.965),loud?0.10+Math.random()*0.08:0.014,baseH);
+  /* With accents, the ink stays a quiet near-neutral and they carry the colour.
+     A duotone has no accents: the ink is the colour, so it gets a hue of its
+     own, away from the anchor's - and sometimes a page that joins in. */
+  const duo=state.count===2, inkH=(baseH+90+Math.random()*180)%360;
+  const ink   =duo ? fromOklch(dark?0.84:0.40,0.12+Math.random()*0.10,inkH)
+                   : fromOklch(dark?0.86:0.24,0.012,baseH);
   const spread=[0,120,240].sort(()=>Math.random()-0.5);
   const L=dark?0.70:0.55, C=0.11+Math.random()*0.05;
   state.palette=[anchor,ink,
     fromOklch(L,C,(baseH+spread[0]+jitter()+360)%360),
     fromOklch(L,C,(baseH+spread[1]+jitter()+360)%360),
     fromOklch(L,C,(baseH+spread[2]+jitter()+360)%360)];
+  shuffles.list=[...shuffles.list,snap()].slice(-shuffles.max);
+  shuffles.at=shuffles.list.length-1;
+  syncShuffleNav();
   syncInputs(); render();
 });
 $('#lang-php').addEventListener('click',()=>{state.lang='php';
@@ -534,11 +581,37 @@ async function save(filename, bytes, note){
   toast('Saving is not enabled here \u2014 showing the files instead');
 }
 
-$('#btn-zip').addEventListener('click', () => {
-  const g = generate();
-  save(g.root + '.zip', g.distZip,
-    'Saved ' + g.root + '.zip \u2014 Settings \u203a Plugins \u203a \u2699 \u203a Install Plugin from Disk');
-});
+/* ---- the download button asks first: every variant, or a chosen set ---- */
+{
+  const menu=$('#dlmenu'), btn=$('#btn-zip'), go=$('#dl-go');
+  const open=on=>{ menu.hidden=!on; btn.setAttribute('aria-expanded',String(on)); };
+  const count=()=>state.download.mode==='custom'?state.download.set.length:VARIANTS.length;
+  const sync=()=>{
+    $('#dl-set').hidden=state.download.mode!=='custom';
+    go.disabled=!count();
+    go.textContent=count()?`Download ${count()} variant${count()===1?'':'s'}`:'Pick at least one';
+    generated=null; refreshGenerated();
+  };
+  $('#dl-set').innerHTML=['dark','light','other'].map(mode=>
+    `<div class="dlrow" role="group" aria-label="${mode} variants">`+VARIANTS.filter(v=>v.mode===mode).map(v=>
+      `<label class="dlchk"><input type="checkbox" value="${v.id}"${state.download.set.includes(v.id)?' checked':''}>${v.label}</label>`
+    ).join('')+`</div>`).join('');
+  btn.addEventListener('click',e=>{ e.stopPropagation(); open(menu.hidden); });
+  document.addEventListener('click',e=>{ if(!menu.hidden&&!menu.contains(e.target)) open(false); });
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!menu.hidden){ open(false); btn.focus(); } });
+  menu.addEventListener('change',e=>{
+    if(e.target.name==='dlmode') state.download.mode=e.target.value;
+    else state.download.set=[...menu.querySelectorAll('#dl-set input:checked')].map(i=>i.value);
+    sync();
+  });
+  go.addEventListener('click',()=>{
+    open(false);
+    const g = generate();
+    save(g.root + '.zip', g.distZip,
+      'Saved ' + g.root + '.zip \u2014 Settings \u203a Plugins \u203a \u2699 \u203a Install Plugin from Disk');
+  });
+  sync();
+}
 $('#btn-src').addEventListener('click', () => {
   const g = generate();
   save(g.root + '-src.zip', g.srcZip, 'Saved the Gradle project');

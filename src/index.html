@@ -20,7 +20,15 @@
     <a class="link quiet" id="link-github" href="https://github.com/PendoNL/phpstorm-theme-generator" target="_blank" rel="noopener">GitHub</a>
     <a class="link quiet" id="link-sponsor" href="https://github.com/sponsors/PendoNL" target="_blank" rel="noopener">Sponsor</a>
     <button class="link quiet" id="btn-src">Gradle sources</button>
-    <button class="pill primary" id="btn-zip">Download plugin</button>
+    <span class="dlwrap">
+      <button class="pill primary" id="btn-zip" aria-haspopup="true" aria-expanded="false" aria-controls="dlmenu">Download plugin &#9662;</button>
+      <div class="menu dlmenu" id="dlmenu" hidden>
+        <label class="dlopt"><input type="radio" name="dlmode" value="all" checked><span>All variants</span></label>
+        <label class="dlopt"><input type="radio" name="dlmode" value="custom"><span>Only the ones I pick</span></label>
+        <div class="dlset" id="dl-set" hidden></div>
+        <button class="pill primary" id="dl-go">Download</button>
+      </div>
+    </span>
   </header>
 
   <div class="main">
@@ -34,10 +42,18 @@
 
         <div class="lblrow">
           <span class="lbl">Palette</span>
+          <select class="link" id="seedcount" aria-label="Number of colours">
+            <option value="2">2 colours</option>
+            <option value="3">3 colours</option>
+            <option value="4">4 colours</option>
+            <option value="5" selected>5 colours</option>
+          </select>
           <span class="links">
             <button class="link" id="btn-presets" aria-haspopup="true" aria-expanded="false" aria-controls="presetmenu">Presets &#9662;</button>
             <button class="link" id="btn-swap" title="Swap anchor and ink">Swap</button>
+            <button class="link step" id="btn-shuffle-prev" title="Previous shuffle" aria-label="Previous shuffle" disabled>&lsaquo;</button>
             <button class="link" id="btn-random">Shuffle</button>
+            <button class="link step" id="btn-shuffle-next" title="Next shuffle" aria-label="Next shuffle" disabled>&rsaquo;</button>
           </span>
           <div class="menu" id="presetmenu" hidden></div>
         </div>

@@ -10,7 +10,7 @@
  *   - PHP_SCRIPTING_BACKGROUND must be explicitly cleared, or the inherited
  *     value paints a grey band behind every <?php ?> block inside Blade/HTML.
  */
-import { mix, alpha, noHash } from './color.js';
+import { mix, alpha, noHash, ensure } from './color.js';
 import { resolveOptions, COMMENT_ATTRS, KEYWORD_ATTRS } from './options.js';
 
 /* ---------- editor colour scheme XML ---------- */
@@ -18,6 +18,11 @@ export function buildSchemeXml(res,meta,options={}){
   const o=resolveOptions(options);
   const T=res.T;
   const h=k=>noHash(T[k]);
+  /* A colour used as type on the editor page. Accents and status colours are
+     tuned as fills and marks; set as running text they can sit near 2:1, above
+     all when a dark palette is carried to a light variant. */
+  const ht=k=>noHash(ensure(T[k],T.bgEditor,4.5,res.sign));
+  const hx=k=>/^(sem|accentSecondary|accentTertiary)/.test(k)?ht(k):h(k);
   const m=(a,b,t)=>noHash(mix(T[a],T[b],t));
   const al=(k,a)=>noHash(alpha(T[k],a));
 
@@ -141,12 +146,12 @@ export function buildSchemeXml(res,meta,options={}){
   at('GENERIC_SERVER_ERROR_OR_WARNING',{EFFECT_COLOR:h('semWarning'),EFFECT_TYPE:'2'});
   at('DUPLICATE_FROM_SERVER',{BACKGROUND:m('fgDefault','bgEditor',0.95)});
   at('RUNTIME_ERROR',{EFFECT_COLOR:h('semError'),EFFECT_TYPE:'2'});
-  at('WRONG_REFERENCES_ATTRIBUTES',{FOREGROUND:h('semError')});
+  at('WRONG_REFERENCES_ATTRIBUTES',{FOREGROUND:ht('semError')});
   at('TYPO',{EFFECT_COLOR:m('semSuccess','bgEditor',0.30),EFFECT_TYPE:'2'});
   at('NOT_USED_ELEMENT_ATTRIBUTES',{FOREGROUND:h('fgDisabled')});
   at('DEPRECATED_ATTRIBUTES',{EFFECT_COLOR:h('fgSubtle'),EFFECT_TYPE:'3'});
   at('MARKED_FOR_REMOVAL_ATTRIBUTES',{EFFECT_COLOR:h('semError'),EFFECT_TYPE:'3'});
-  at('FILESTATUS_ERRORS',{FOREGROUND:h('semError')});
+  at('FILESTATUS_ERRORS',{FOREGROUND:ht('semError')});
   at('SUGGESTION',{EFFECT_COLOR:h('accentPrimary'),EFFECT_TYPE:'1'});
   at('IDENTIFIER_UNDER_CARET_ATTRIBUTES',{BACKGROUND:m('accentPrimary','bgEditor',0.84)});
   at('WRITE_IDENTIFIER_UNDER_CARET_ATTRIBUTES',{BACKGROUND:m('accentSecondary','bgEditor',0.80)});
@@ -160,15 +165,15 @@ export function buildSchemeXml(res,meta,options={}){
   at('FOLDED_TEXT_ATTRIBUTES',{FOREGROUND:h('fgSubtle'),BACKGROUND:m('fgDefault','bgEditor',0.92)});
   at('DELETED_TEXT_ATTRIBUTES',{FOREGROUND:h('fgDisabled'),EFFECT_COLOR:h('fgDisabled'),EFFECT_TYPE:'3'});
   at('INJECTED_LANGUAGE_FRAGMENT',{BACKGROUND:m('accentTertiary','bgEditor',0.96)});
-  at('TODO_DEFAULT_ATTRIBUTES',{FOREGROUND:h('semWarning'),FONT_TYPE:'1'});
+  at('TODO_DEFAULT_ATTRIBUTES',{FOREGROUND:ht('semWarning'),FONT_TYPE:'1'});
   at('LIVE_TEMPLATE_ATTRIBUTES',{EFFECT_COLOR:h('accentPrimary'),EFFECT_TYPE:'0'});
   at('LIVE_TEMPLATE_INACTIVE_SEGMENT',{FOREGROUND:h('fgSubtle')});
-  at('TEMPLATE_VARIABLE_ATTRIBUTES',{FOREGROUND:h('accentPrimary'),FONT_TYPE:'1'});
+  at('TEMPLATE_VARIABLE_ATTRIBUTES',{FOREGROUND:h('fgLink'),FONT_TYPE:'1'});
   at('BOOKMARKS_ATTRIBUTES',{ERROR_STRIPE_COLOR:h('accentSecondary')});
-  at('HYPERLINK_ATTRIBUTES',{FOREGROUND:h('accentPrimary'),EFFECT_COLOR:h('accentPrimary'),EFFECT_TYPE:'1'});
+  at('HYPERLINK_ATTRIBUTES',{FOREGROUND:h('fgLink'),EFFECT_COLOR:h('fgLink'),EFFECT_TYPE:'1'});
   at('FOLLOWED_HYPERLINK_ATTRIBUTES',{FOREGROUND:h('accentPrimaryMuted'),EFFECT_COLOR:h('accentPrimaryMuted'),EFFECT_TYPE:'1'});
   at('INACTIVE_HYPERLINK_ATTRIBUTES',{FOREGROUND:h('fgSubtle')});
-  at('CTRL_CLICKABLE',{FOREGROUND:h('accentPrimary'),EFFECT_COLOR:h('accentPrimary'),EFFECT_TYPE:'1'});
+  at('CTRL_CLICKABLE',{FOREGROUND:h('fgLink'),EFFECT_COLOR:h('fgLink'),EFFECT_TYPE:'1'});
   at('BREADCRUMBS_DEFAULT',{FOREGROUND:h('fgMuted')});
   at('BREADCRUMBS_HOVERED',{FOREGROUND:h('fgDefault'),BACKGROUND:h('bgHover')});
   at('BREADCRUMBS_CURRENT',{FOREGROUND:h('fgDefault'),BACKGROUND:h('bgSelectionUi')});
@@ -193,20 +198,20 @@ export function buildSchemeXml(res,meta,options={}){
   at('EVALUATED_EXPRESSION_ATTRIBUTES',{BACKGROUND:m('accentSecondary','bgEditor',0.84)});
   at('EVALUATED_EXPRESSION_EXECUTION_LINE_ATTRIBUTES',{BACKGROUND:m('accentSecondary','bgEditor',0.76)});
   at('DEBUGGER_INLINED_VALUES',{FOREGROUND:h('fgSubtle'),FONT_TYPE:'2'});
-  at('DEBUGGER_INLINED_VALUES_MODIFIED',{FOREGROUND:h('accentSecondary'),FONT_TYPE:'2'});
-  at('DEBUGGER_INLINED_VALUES_EXECUTION_LINE',{FOREGROUND:h('accentPrimary'),FONT_TYPE:'2'});
+  at('DEBUGGER_INLINED_VALUES_MODIFIED',{FOREGROUND:ht('accentSecondary'),FONT_TYPE:'2'});
+  at('DEBUGGER_INLINED_VALUES_EXECUTION_LINE',{FOREGROUND:h('fgLink'),FONT_TYPE:'2'});
   at('DEBUGGER_SMART_STEP_INTO_TARGET',{BACKGROUND:m('accentPrimary','bgEditor',0.76)});
   at('DEBUGGER_SMART_STEP_INTO_SELECTION',{FOREGROUND:h('fgInverse'),BACKGROUND:h('accentPrimary')});
   at('INLINE_STACK_FRAMES',{FOREGROUND:h('fgSubtle')});
-  at('LINE_FULL_COVERAGE',{FOREGROUND:h('semSuccess')});
-  at('LINE_PARTIAL_COVERAGE',{FOREGROUND:h('semWarning')});
-  at('LINE_NONE_COVERAGE',{FOREGROUND:h('semError')});
+  at('LINE_FULL_COVERAGE',{FOREGROUND:ht('semSuccess')});
+  at('LINE_PARTIAL_COVERAGE',{FOREGROUND:ht('semWarning')});
+  at('LINE_NONE_COVERAGE',{FOREGROUND:ht('semError')});
   ['accentPrimary','accentSecondary','accentTertiary','synConstant','synFunction']
-    .forEach((k,i)=>at('RAINBOW_COLOR'+i,{FOREGROUND:h(k)}));
+    .forEach((k,i)=>at('RAINBOW_COLOR'+i,{FOREGROUND:ht(k)}));
   at('CONSOLE_NORMAL_OUTPUT',{FOREGROUND:h('fgDefault')});
-  at('CONSOLE_ERROR_OUTPUT',{FOREGROUND:h('semError')});
-  at('CONSOLE_SYSTEM_OUTPUT',{FOREGROUND:h('semInfo')});
-  at('CONSOLE_USER_INPUT',{FOREGROUND:h('semSuccess'),FONT_TYPE:'2'});
+  at('CONSOLE_ERROR_OUTPUT',{FOREGROUND:ht('semError')});
+  at('CONSOLE_SYSTEM_OUTPUT',{FOREGROUND:ht('semInfo')});
+  at('CONSOLE_USER_INPUT',{FOREGROUND:ht('semSuccess'),FONT_TYPE:'2'});
   at('CONSOLE_RANGE_TO_EXECUTE',{BACKGROUND:m('accentPrimary','bgEditor',0.88)});
   at('CONSOLE_SELECTED_PARAMETER',{BACKGROUND:h('bgSelection')});
   const ANSI=[['CONSOLE_BLACK_OUTPUT','ansiBlack'],['CONSOLE_RED_OUTPUT','ansiRed'],
@@ -229,7 +234,7 @@ export function buildSchemeXml(res,meta,options={}){
   at('BLOCK_TERMINAL_CURRENT_SEARCH_ENTRY',{FOREGROUND:h('fgInverse'),BACKGROUND:h('accentSecondary')});
   [['LOG_VERBOSE_OUTPUT','fgDisabled'],['LOG_DEBUG_OUTPUT','fgSubtle'],['LOG_INFO_OUTPUT','fgDefault'],
    ['LOG_WARNING_OUTPUT','semWarning'],['LOG_ERROR_OUTPUT','semError'],['LOG_EXPIRED_ENTRY','fgDisabled']]
-   .forEach(([k,t2])=>at(k,{FOREGROUND:h(t2)}));
+   .forEach(([k,t2])=>at(k,{FOREGROUND:hx(t2)}));
   /* PHP */
   at('PHP_TAG',{FOREGROUND:h('synMetadata')});
   clr('PHP_SCRIPTING_BACKGROUND');
@@ -253,13 +258,13 @@ export function buildSchemeXml(res,meta,options={}){
    ['TWIG_STRING','synString',null],['TWIG_NUMBER','synNumber',null],
    ['TWIG_COMMENT','synComment','2'],['TWIG_BRACKETS','synMetadata',null],
    ['TWIG_OPERATION_SIGN','synOperator',null],['TWIG_BAD_CHARACTER','synInvalid',null]]
-   .forEach(([k,t2,ft])=>at(k,ft?{FOREGROUND:h(t2),FONT_TYPE:ft}:{FOREGROUND:h(t2)}));
+   .forEach(([k,t2,ft])=>at(k,ft?{FOREGROUND:hx(t2),FONT_TYPE:ft}:{FOREGROUND:hx(t2)}));
   [['HTML_TAG','synPunct'],['HTML_TAG_NAME','synKeyword'],['HTML_ATTRIBUTE_NAME','synMetadata'],
    ['HTML_ATTRIBUTE_VALUE','synString'],['HTML_ENTITY_REFERENCE','synConstant'],
    ['XML_TAG','synPunct'],['XML_TAG_NAME','synKeyword'],['XML_ATTRIBUTE_NAME','synMetadata'],
    ['XML_ATTRIBUTE_VALUE','synString'],['XML_ENTITY_REFERENCE','synConstant'],
    ['XML_NS_PREFIX','synType'],['XML_PROLOGUE','synComment'],['TAG_ATTR_KEY','synMetadata']]
-   .forEach(([k,t2])=>at(k,{FOREGROUND:h(t2)}));
+   .forEach(([k,t2])=>at(k,{FOREGROUND:hx(t2)}));
   [['CSS.IDENT','synType',null],['CSS.TAG_NAME','synKeyword',null],['CSS.PROPERTY_NAME','synVariable',null],
    ['CSS.PROPERTY_VALUE','synString',null],['CSS.KEYWORD','synKeyword',null],['CSS.FUNCTION','synFunction',null],
    ['CSS.STRING','synString',null],['CSS.NUMBER','synNumber',null],['CSS.COLOR','synConstant',null],
@@ -267,7 +272,7 @@ export function buildSchemeXml(res,meta,options={}){
    ['CSS.IMPORTANT','semError','1'],['CSS.COMMENT','synComment','2'],['SASS_VARIABLE','synVariable',null],
    ['SASS_MIXIN','synFunction',null],['SASS_IDENTIFIER','synType',null],['LESS_VARIABLE','synVariable',null],
    ['STYLUS_VARIABLE','synVariable',null]]
-   .forEach(([k,t2,ft])=>at(k,ft?{FOREGROUND:h(t2),FONT_TYPE:ft}:{FOREGROUND:h(t2)}));
+   .forEach(([k,t2,ft])=>at(k,ft?{FOREGROUND:hx(t2),FONT_TYPE:ft}:{FOREGROUND:hx(t2)}));
   inh('SASS_COMMENT','CSS.COMMENT');
   [['JS.KEYWORD','synKeyword','1'],['JS.STRING','synString',null],['JS.NUMBER','synNumber',null],
    ['JS.REGEXP','synConstant',null],['JS.LINE_COMMENT','synComment','2'],['JS.BLOCK_COMMENT','synComment','2'],
@@ -279,7 +284,7 @@ export function buildSchemeXml(res,meta,options={}){
    ['JS.MODULE_NAME','synType',null],['TS.PARAMETER','synVariable',null],
    ['TS.GLOBAL_VARIABLE','synVariable',null],['TS.MODULE_NAME','synType',null],
    ['TS.TYPE_PARAMETER','synType',null],['TS.TYPE_GUARD','synKeyword',null]]
-   .forEach(([k,t2,ft])=>at(k,ft?{FOREGROUND:h(t2),FONT_TYPE:ft}:{FOREGROUND:h(t2)}));
+   .forEach(([k,t2,ft])=>at(k,ft?{FOREGROUND:hx(t2),FONT_TYPE:ft}:{FOREGROUND:hx(t2)}));
   at('JS.INSTANCE_MEMBER_VARIABLE',{FOREGROUND:m('synVariable','synType',0.45)});
   at('JS.STATIC_MEMBER_VARIABLE',{FOREGROUND:m('synVariable','synType',0.45)});
   at('JS.EXPORTED.VARIABLE',{FOREGROUND:h('synVariable')});
@@ -288,23 +293,23 @@ export function buildSchemeXml(res,meta,options={}){
   [['JSON.KEYWORD','synKeyword'],['JSON.STRING','synString'],['JSON.NUMBER','synNumber'],
    ['JSON.PROPERTY_KEY','synType'],['JSON.BRACES','synPunct'],['JSON.BRACKETS','synPunct'],
    ['JSON.COLON','synPunct'],['JSON.COMMA','synPunct'],['JSON.VALID_ESCAPE','synConstant']]
-   .forEach(([k,t2])=>at(k,{FOREGROUND:h(t2)}));
+   .forEach(([k,t2])=>at(k,{FOREGROUND:hx(t2)}));
   [['YAML_SCALAR_KEY','synType',null],['YAML_SCALAR_VALUE','synString',null],
    ['YAML_SCALAR_STRING','synString',null],['YAML_SCALAR_DSTRING','synString',null],
    ['YAML_SCALAR_LIST','synString',null],['YAML_TEXT','fgDefault',null],
    ['YAML_COMMENT','synComment','2'],['YAML_ANCHOR','synConstant',null],['YAML_SIGN','synPunct',null]]
-   .forEach(([k,t2,ft])=>at(k,ft?{FOREGROUND:h(t2),FONT_TYPE:ft}:{FOREGROUND:h(t2)}));
+   .forEach(([k,t2,ft])=>at(k,ft?{FOREGROUND:hx(t2),FONT_TYPE:ft}:{FOREGROUND:hx(t2)}));
   for(let i=1;i<=6;i++) at('MARKDOWN_HEADER_LEVEL_'+i,{FOREGROUND:h('synKeyword'),FONT_TYPE:'1'});
   at('MARKDOWN_BOLD',{FOREGROUND:h('fgDefault'),FONT_TYPE:'1'});
   at('MARKDOWN_ITALIC',{FOREGROUND:h('fgDefault'),FONT_TYPE:'2'});
   at('MARKDOWN_CODE_SPAN',{FOREGROUND:h('synString')});
   at('MARKDOWN_CODE_SPAN_MARKER',{FOREGROUND:h('synPunct')});
   at('MARKDOWN_CODE_FENCE',{BACKGROUND:m('fgDefault','bgEditor',0.96)});
-  at('MARKDOWN_LINK_TEXT',{FOREGROUND:h('accentPrimary')});
+  at('MARKDOWN_LINK_TEXT',{FOREGROUND:h('fgLink')});
   at('MARKDOWN_LINK_LABEL',{FOREGROUND:h('synType')});
   at('MARKDOWN_LINK_TITLE',{FOREGROUND:h('synString')});
   at('MARKDOWN_LINK_DESTINATION',{FOREGROUND:h('synComment'),EFFECT_COLOR:h('synComment'),EFFECT_TYPE:'1'});
-  at('MARKDOWN_AUTO_LINK',{FOREGROUND:h('accentPrimary'),EFFECT_COLOR:h('accentPrimary'),EFFECT_TYPE:'1'});
+  at('MARKDOWN_AUTO_LINK',{FOREGROUND:h('fgLink'),EFFECT_COLOR:h('fgLink'),EFFECT_TYPE:'1'});
   at('MARKDOWN_TABLE_SEPARATOR',{FOREGROUND:h('synPunct')});
   [['REGEXP.META','synKeyword'],['REGEXP.BRACES','synPunct'],['REGEXP.BRACKETS','synPunct'],
    ['REGEXP.PARENTHS','synPunct'],['REGEXP.COMMA','synPunct'],['REGEXP.CHAR_CLASS','synConstant'],
@@ -316,7 +321,7 @@ export function buildSchemeXml(res,meta,options={}){
    ['EDITORCONFIG_VARIABLE','synVariable'],['SQL_OUTER_QUERY_COLUMN','synType'],
    ['GRID_ERROR_VALUE','semError'],['HTTP_REQUEST_PARAMETER_NAME','synMetadata'],
    ['HTTP_REQUEST_PARAMETER_VALUE','synString'],['HTTP_REQUEST_VARIABLE_BRACES','synPunct']]
-   .forEach(([k,t2])=>at(k,{FOREGROUND:h(t2)}));
+   .forEach(([k,t2])=>at(k,{FOREGROUND:hx(t2)}));
   at('REGEXP_MATCHED_GROUPS',{BACKGROUND:m('accentPrimary','bgEditor',0.85)});
 
   /* Comment italics and keyword bold are the two font-style choices anyone

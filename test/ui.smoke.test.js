@@ -287,6 +287,121 @@ test('editor font settings show in the preview', () => {
   assert.equal(ide.style.getPropertyValue('--o-line'), '');
 });
 
+test('the download button asks what to download: every variant, or a chosen set', () => {
+  const ev = (el, type) => el.dispatchEvent(new dom.window.Event(type, { bubbles: true }));
+  const themes = () => [...all('.frow')].filter(r => r.textContent.includes('.theme.json')).length;
+  const box = id => $(`#dl-set input[value="${id}"]`);
+  const mode = v => { const r = $(`#dlmenu input[name="dlmode"][value="${v}"]`); r.checked = true; ev(r, 'change'); };
+  click($('.view[data-view="files"]'));
+  const everything = themes();
+  assert.ok(everything >= 13, 'all variants by default');
+
+  assert.equal($('#dlmenu').hidden, true);
+  click($('#btn-zip'));
+  assert.equal($('#dlmenu').hidden, false, 'the button opens the choice instead of downloading blind');
+  assert.equal($('#btn-zip').getAttribute('aria-expanded'), 'true');
+  assert.deepEqual(clicked, [], 'nothing is saved yet');
+  assert.equal($('#dl-set').hidden, true);
+
+  mode('custom');
+  assert.equal($('#dl-set').hidden, false);
+  assert.equal(all('#dl-set input').length, everything, 'one box per variant');
+  assert.equal(themes(), 2, 'a custom set starts as dark + light');
+  assert.match($('#dl-go').textContent, /2 variants/);
+
+  box('neon').checked = true; ev(box('neon'), 'change');
+  assert.equal(themes(), 3);
+  assert.ok([...all('.frow')].some(r => /neon\.theme\.json/.test(r.textContent)));
+
+  // an empty set would be an empty plugin, so there is nothing to download
+  for (const b of all('#dl-set input')) { b.checked = false; ev(b, 'change'); }
+  assert.equal($('#dl-go').disabled, true);
+  box('dark').checked = true; ev(box('dark'), 'change');
+  assert.equal($('#dl-go').disabled, false);
+
+  mode('all');
+  assert.equal(themes(), everything);
+  dom.window.document.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  assert.equal($('#dlmenu').hidden, true, 'Escape closes it');
+  click($('.view[data-view="preview"]'));
+});
+
+test('the palette can be two to five colours', () => {
+  const pick = n => { $('#seedcount').value = String(n); $('#seedcount').dispatchEvent(new dom.window.Event('change', { bubbles: true })); };
+  const shown = () => [...all('.seed')].filter(s => !s.hidden).length;
+  const keyword = () => $('#ide').style.getPropertyValue('--t-synString');
+  assert.equal($('#seedcount').value, '5');
+  assert.equal(shown(), 5);
+  const five = keyword();
+
+  pick(2);
+  assert.equal(shown(), 2, 'only anchor and ink are asked for');
+  assert.notEqual(keyword(), five, 'the theme is re-derived from two colours');
+  click($('.view[data-view="files"]'));
+  assert.ok(all('.frow').length >= 15, 'and it still packages');
+  click($('.view[data-view="preview"]'));
+
+  pick(3); assert.equal(shown(), 3);
+  pick(4); assert.equal(shown(), 4);
+
+  // a preset is five colours, so picking one brings all five back
+  click($('#btn-presets')); click(all('.preset')[1]);
+  assert.equal($('#seedcount').value, '5');
+  assert.equal(shown(), 5);
+});
+
+test('shuffling a two-colour palette gives a coloured ink, not grey on dark', async () => {
+  const { toOklch } = await import('../src/lib/color.js');
+  $('#seedcount').value = '2';
+  $('#seedcount').dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+  for (let i = 0; i < 40; i++) {
+    click($('#btn-random'));
+    const ink = $('#hex1').value;
+    // 0.06, not more: a dark ink for a light page has little chroma to give in yellow and brown
+    assert.ok(toOklch(ink).c >= 0.06, `shuffle ${i}: ink ${ink} is grey, so the whole duotone is`);
+  }
+  // with accents to carry the colour, the ink stays the quiet near-neutral it was
+  $('#seedcount').value = '5';
+  $('#seedcount').dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+  click($('#btn-random'));
+  assert.ok(toOklch($('#hex1').value).c < 0.04);
+  click($('#btn-presets')); click(all('.preset')[0]);
+});
+
+test('shuffles can be stepped back and forth through', () => {
+  const pal = () => [0, 1, 2, 3, 4].map(i => $('#hex' + i).value).join();
+  const prev = $('#btn-shuffle-prev'), next = $('#btn-shuffle-next');
+  const start = pal();
+
+  click($('#btn-random')); const a = pal();
+  click($('#btn-random')); const b = pal();
+  click($('#btn-random')); const c = pal();
+  assert.equal(next.disabled, true, 'the newest shuffle is the end of the line');
+
+  click(prev); assert.equal(pal(), b);
+  click(prev); assert.equal(pal(), a);
+  click(prev); assert.equal(pal(), start, 'what was on screen before shuffling is kept too');
+  assert.equal(next.disabled, false);
+  click(next); click(next); click(next);
+  assert.equal(pal(), c);
+
+  // shuffling from the middle loses nothing: the new one goes on the end, and you with it
+  click(prev); click($('#btn-random')); const d = pal();
+  assert.equal(next.disabled, true);
+  click(prev); assert.equal(pal(), c, 'what lay ahead is still there');
+  click(prev); assert.equal(pal(), b);
+  click(next); click(next); assert.equal(pal(), d);
+
+  // the colour count travels with the entry
+  $('#seedcount').value = '2';
+  $('#seedcount').dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+  click($('#btn-random'));
+  click(prev); assert.equal($('#seedcount').value, '2', 'the two-colour view you shuffled from');
+  click(prev); assert.equal($('#seedcount').value, '5');
+  click(next); click(next); assert.equal($('#seedcount').value, '2');
+  click($('#btn-presets')); click(all('.preset')[0]);
+});
+
 test('an ordinary browser downloads without any capability', () => {
   // jsdom has no window.claude, i.e. it is any normal browser: GitHub Pages,
   // file://, npm run dev. The Blob + <a download> path must fire, and the
@@ -295,12 +410,14 @@ test('an ordinary browser downloads without any capability', () => {
   assert.ok($('#btn-src'), 'the sources button must not be removed');
 
   click($('#btn-zip'));
+  click($('#dl-go'));
   return new Promise(r => setTimeout(r, 50)).then(() => {
     // Derive the expected name from current state — an earlier test changes
     // the theme name, and this assertion must not depend on test order.
     const slug = $('#famname').value.toLowerCase()
       .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     assert.deepEqual(clicked, [`${slug}.zip`], 'expected a download to fire');
+    assert.equal($('#dlmenu').hidden, true, 'and the choice closes once it is made');
   });
 });
 

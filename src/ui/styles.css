@@ -70,6 +70,9 @@ button{cursor:pointer}
 .field:focus{border-color:var(--accent);background:var(--surface)}
 .link{border:0;background:none;padding:0;font-size:12.5px;color:var(--accent)}
 .link:hover{text-decoration:underline}
+.link.step{padding:0 3px;font-size:15px;line-height:1}
+.link:disabled{color:var(--ink-3);opacity:.45;cursor:default;text-decoration:none}
+select.link{font:inherit;font-size:12.5px;cursor:pointer}
 .link.quiet{color:var(--ink-3)}
 .link.quiet:hover{color:var(--accent);text-decoration:none}
 .topbar .link.quiet{font-size:13px;color:var(--ink-2)}
@@ -152,6 +155,17 @@ button{cursor:pointer}
    label the spare width; the switch still ends on the same right edge. */
 .opt{display:grid;grid-template-columns:minmax(0,1fr) 150px;align-items:center;gap:12px;min-height:32px;margin-bottom:6px}
 .opt .ol{display:flex;align-items:center;font-size:13px;color:var(--ink-2);white-space:nowrap}
+.dlwrap{position:relative;display:inline-flex}
+.dlmenu{min-width:270px;padding:12px;display:grid;gap:8px}
+.dlmenu[hidden]{display:none}
+.dlopt{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer}
+.dlopt input{accent-color:var(--accent);margin:0}
+.dlmenu .pill{width:100%;justify-content:center;margin-top:4px}
+.dlmenu .pill:disabled{opacity:.5;cursor:not-allowed}
+.dlset{margin:2px 0 2px 22px}
+.dlrow{display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:6px}
+.dlchk{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-2);cursor:pointer}
+.dlchk input{accent-color:var(--accent);margin:0}
 .opt.toggle{grid-template-columns:minmax(0,1fr) auto;cursor:pointer}
 .opt select.field{padding:0 8px;cursor:pointer}
 #fileicons-note:empty{display:none}
